@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trích Xuất Bì Thư & Lưu Google Sheets</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-md">
+                    <i class="fa-solid fa-envelope-open-text text-2xl text-amber-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Envelope OCR Reader</h1>
+                    <p class="text-xs text-indigo-200">Trích xuất thông tin bì thư & Lưu Google Sheets</p>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="flex bg-indigo-700/60 p-1 rounded-xl text-sm font-medium">
+                <button id="tabAppBtn" onclick="switchTab('app')" class="px-4 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Scan & Nhập
+                </button>
+                <button id="tabHistoryBtn" onclick="switchTab('history')" class="px-4 py-2 rounded-lg text-indigo-100 hover:text-white transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> Lịch sử
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: APP / SCAN & EDIT -->
+        <div id="tabApp" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Side: Image Upload & OCR Action -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="glass-card rounded-2xl p-5 shadow-sm space-y-4">
+                        <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-image text-indigo-600"></i> Ảnh bì thư người nhận
+                        </h2>
+
+                        <!-- Khung xem trước ảnh và chọn/chụp -->
+                        <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-xl p-3 text-center relative overflow-hidden flex flex-col justify-center items-center">
+                            
+                            <input type="file" id="imageInput" accept="image/*" onchange="handleFileSelect(event)" style="display:none;">
+                            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleFileSelect(event)" style="display:none;">
+
+                            <img id="imagePreview" src="" alt="Bì thư preview" class="max-h-72 rounded-lg object-contain shadow-md mb-2 hidden" />
+
+                            <div id="uploadPlaceholder" class="space-y-3 py-6 w-full">
+                                <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                                    <i class="fa-solid fa-camera-retro"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-700">Chụp ảnh bì thư hoặc tải lên</p>
+                                    <p class="text-xs text-slate-400 mt-1">Hỗ trợ điện thoại và máy tính</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 justify-center w-full pt-2 border-t border-slate-200/60">
+                                <button type="button" onclick="document.getElementById('cameraInput').click()" class="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-camera"></i> Chụp ảnh mới
+                                </button>
+                                <button type="button" onclick="document.getElementById('imageInput').click()" class="flex-1 py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-folder-open"></i> Thư viện máy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <button type="button" id="btnExtract" onclick="manualOCRProcess()" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-200 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Nhận diện bằng Cloud Vision
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Side: Edit Form -->
+                <div class="lg:col-span-7">
+                    <div class="glass-card rounded-2xl p-6 shadow-sm space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square text-indigo-600"></i> Kiểm tra & Chỉnh sửa thông tin
+                            </h2>
+                            <span id="ocrStatus" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">Chờ dữ liệu</span>
+                        </div>
+
+                        <details class="text-sm"><summary class="cursor-pointer">Xem văn bản OCR gốc</summary>
+                        <pre id="ocrRawText" class="whitespace-pre-wrap mt-2"></pre></details>
+                        <p id="ocrWarnings" class="text-sm text-amber-700"></p>
+                        <form id="envelopeForm" class="space-y-4" onsubmit="event.preventDefault(); manualSubmit();">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Họ và tên người nhận</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-user"></i>
+                                    </span>
+                                    <input type="text" id="recipientName" required placeholder="Ví dụ: Nguyễn Minh Nguyệt" 
+                                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ngày sinh (SN)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-cake-candles"></i>
+                                    </span>
+                                    <input type="text" id="recipientDob" placeholder="Ví dụ: 14/07/2012" 
+                                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Địa chỉ chi tiết</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 pt-3 text-slate-400">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </span>
+                                    <textarea id="recipientAddress" rows="3" placeholder="Ví dụ: Số nhà 7 Ngõ 18/Ngách 4 TDP Thượng Mão - Phú Lương" 
+                                        class="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"></textarea>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Số điện thoại</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-phone"></i>
+                                    </span>
+                                    <input type="tel" id="recipientPhone" placeholder="Ví dụ: 0365424882" 
+                                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <button type="submit" id="btnSubmit" class="w-full py-3 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-base font-semibold shadow-lg shadow-emerald-200 transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-paper-plane"></i> Lưu vào Google Sheets
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: HISTORY -->
+        <div id="tabHistory" class="hidden space-y-4">
+            <div class="glass-card rounded-2xl p-6 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i> Lịch sử đã lưu gần đây
+                    </h2>
+                    <button onclick="clearHistory()" class="text-xs text-rose-600 hover:text-rose-800 font-medium px-3 py-1.5 bg-rose-50 rounded-lg transition">
+                        <i class="fa-solid fa-trash-can"></i> Xóa lịch sử
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-xs text-slate-700 uppercase">
+                            <tr>
+                                <th class="p-3 rounded-l-lg">Thời gian</th>
+                                <th class="p-3">Họ và tên</th>
+                                <th class="p-3">Ngày sinh</th>
+                                <th class="p-3">Số điện thoại</th>
+                                <th class="p-3">Địa chỉ</th>
+                                <th class="p-3 rounded-r-lg">Trạng thái Sheet</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamically generated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Message Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 max-w-sm bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-info text-indigo-400 text-lg"></i>
+        <span id="toastMessage">Thông báo</span>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        let currentBase64Image = null;
+        let appBusy = false;
+        let recordSaved = false;
+        let currentRecordId = crypto.randomUUID();
+        const DEFAULT_SCRIPT_URL = "DAN_URL_APPS_SCRIPT_EXEC_VAO_DAY";
+        window.onload = function() {
+            renderHistory();
+            document.getElementById("ocrStatus").textContent = "Sẵn sàng quét Cloud Vision";
+            document.getElementById("ocrStatus").className = "text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700";
+        };
+
+        function switchTab(tab) {
+            document.getElementById("tabApp").classList.add("hidden");
+            document.getElementById("tabHistory").classList.add("hidden");
+
+            document.getElementById("tabAppBtn").className = "px-4 py-2 rounded-lg text-indigo-100 hover:text-white transition-all flex items-center gap-2";
+            document.getElementById("tabHistoryBtn").className = "px-4 py-2 rounded-lg text-indigo-100 hover:text-white transition-all flex items-center gap-2";
+
+            if (tab === 'app') {
+                document.getElementById("tabApp").classList.remove("hidden");
+                document.getElementById("tabAppBtn").className = "px-4 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition-all flex items-center gap-2";
+            } else if (tab === 'history') {
+                document.getElementById("tabHistory").classList.remove("hidden");
+                document.getElementById("tabHistoryBtn").className = "px-4 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition-all flex items-center gap-2";
+                renderHistory();
+            }
+        }
+
+        function handleFileSelect(event) {
+            if (appBusy) return;
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onerror = () => showToast('Không đọc được ảnh; hãy dùng JPEG hoặc PNG.', 'error');
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1600;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (Math.max(width, height) > MAX_WIDTH) {
+                            const scale = MAX_WIDTH / Math.max(width, height);
+                            height = Math.round(height * scale);
+                            width = Math.round(width * scale);
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                        currentRecordId = crypto.randomUUID();
+                        recordSaved = false;
+                        document.getElementById('envelopeForm').reset();
+                        currentBase64Image = compressedBase64;
+                        showImagePreview(compressedBase64);
+                        
+                        processAIAndSave(compressedBase64);
+                    }
+                };
+                reader.onerror = () => showToast('Không mở được tệp ảnh.', 'error');
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function showImagePreview(src) {
+            const imgPreview = document.getElementById("imagePreview");
+            const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+            
+            imgPreview.src = src;
+            imgPreview.classList.remove("hidden");
+            if(uploadPlaceholder) {
+                uploadPlaceholder.style.display = "none";
+            }
+        }
+
+        function setBusy(value) {
+            appBusy = value;
+            ['btnExtract','btnSubmit','imageInput','cameraInput'].forEach(id => {
+                document.getElementById(id).disabled = value;
+            });
+        }
+        async function apiRequest(payload) {
+            if (!DEFAULT_SCRIPT_URL.startsWith('https://script.google.com/macros/s/'))
+                throw new Error('Chưa cấu hình URL Apps Script /exec trong index.html.');
+            let response;
+            try {
+                response = await fetch(DEFAULT_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(60000)
+                });
+            } catch (err) {
+                if (err.name === 'TimeoutError' || err.name === 'AbortError')
+                    throw new Error('Quá 60 giây. Máy chủ có thể vẫn xử lý; nếu đang lưu, bấm Lưu lại sẽ dùng cùng mã để tránh trùng.');
+                throw new Error('Không kết nối được Apps Script. Kiểm tra URL, quyền truy cập và Network.');
+            }
+            if (!response.ok) throw new Error('Apps Script HTTP ' + response.status);
+            let result;
+            try { result = JSON.parse(await response.text()); }
+            catch (_) { throw new Error('Phản hồi không phải JSON. Kiểm tra triển khai và quyền truy cập Apps Script.'); }
+            if (result.result !== 'success') throw new Error(result.message || 'Xử lý thất bại.');
+            return result;
+        }
+        async function processAIAndSave(base64Img) {
+            if (appBusy) return;
+            if (recordSaved) {
+                showToast('Chọn ảnh mới để tạo bản ghi tiếp theo.', 'info');
+                return;
+            }
+            const status = document.getElementById('ocrStatus');
+            const button = document.getElementById('btnExtract');
+            setBusy(true);
+            status.textContent = 'Cloud Vision đang đọc chữ...';
+            button.textContent = 'Đang nhận diện...';
+            try {
+                const result = await apiRequest({action:'ocr', imageBase64:base64Img});
+                const data = result.data;
+                document.getElementById('recipientName').value = data.hoTen || '';
+                document.getElementById('recipientDob').value = data.ngaySinh || '';
+                document.getElementById('recipientAddress').value = data.diaChi || '';
+                document.getElementById('recipientPhone').value = data.sdt || '';
+                document.getElementById('ocrRawText').textContent = result.rawText || '';
+                document.getElementById('ocrWarnings').textContent = (data.warnings || []).join(' ');
+                status.textContent = 'Đã đọc (' + (result.elapsedMs/1000).toFixed(1) + 's) — chưa lưu';
+                showToast('Kiểm tra thông tin rồi bấm Lưu vào Google Sheets.', 'success');
+            } catch (err) {
+                status.textContent = 'Lỗi nhận diện';
+                showToast(err.message, 'error');
+            } finally {
+                setBusy(false);
+                button.textContent = 'Nhận diện lại bằng Cloud Vision';
+            }
+        }
+        function manualOCRProcess() {
+            if (!currentBase64Image) return showToast('Vui lòng chọn ảnh trước!', 'warning');
+            processAIAndSave(currentBase64Image);
+        }
+        async function manualSubmit() {
+            if (appBusy) return;
+            if (recordSaved) return showToast('Bản ghi đã lưu. Chọn ảnh mới cho bản ghi tiếp theo.', 'info');
+            const hoTen = document.getElementById('recipientName').value.trim();
+            if (!hoTen) return showToast('Họ tên không được để trống!', 'warning');
+            const ngaySinh = document.getElementById('recipientDob').value.trim();
+            const diaChi = document.getElementById('recipientAddress').value.trim();
+            const sdt = document.getElementById('recipientPhone').value.trim();
+            const button = document.getElementById('btnSubmit');
+            setBusy(true);
+            button.textContent = 'Đang lưu...';
+            try {
+                const result = await apiRequest({action:'save', recordId:currentRecordId, hoTen, ngaySinh, diaChi, sdt});
+                recordSaved = true;
+                document.getElementById('ocrStatus').textContent = 'Đã lưu Sheets';
+                showToast(result.duplicate ? 'Bản ghi này đã được lưu trước đó.' : 'Đã lưu Google Sheets!', 'success');
+                try {
+                    saveToHistory({timestamp:new Date().toLocaleString('vi-VN'), name:hoTen,
+                        dob:ngaySinh, address:diaChi, phone:sdt, status:'Đã lưu Sheet'});
+                } catch (_) { showToast('Đã lưu Sheet, nhưng không lưu được lịch sử trên máy.', 'warning'); }
+            } catch(err) { showToast(err.message, 'error'); }
+            finally { setBusy(false); button.textContent = 'Lưu vào Google Sheets'; }
+        }
+
+        function saveToHistory(record) {
+            let history = JSON.parse(localStorage.getItem("ocr_history") || "[]");
+            history.unshift(record);
+            if (history.length > 50) history.pop();
+            localStorage.setItem("ocr_history", JSON.stringify(history));
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({
+                '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+            }[c]));
+        }
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem("ocr_history") || "[]");
+            const tbody = document.getElementById("historyTableBody");
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            if (history.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Chưa có lịch sử bản ghi nào</td></tr>`;
+                return;
+            }
+
+            history.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 whitespace-nowrap text-xs text-slate-400">${escapeHtml(item.timestamp)}</td>
+                    <td class="p-3 font-semibold text-slate-800">${escapeHtml(item.name)}</td>
+                    <td class="p-3">${escapeHtml(item.dob || '-')}</td>
+                    <td class="p-3 font-mono">${escapeHtml(item.phone || '-')}</td>
+                    <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(item.address || '-')}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                            ${escapeHtml(item.status)}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearHistory() {
+            if (confirm("Bạn có chắc chắn muốn xóa toàn bộ lịch sử đã lưu?")) {
+                localStorage.removeItem("ocr_history");
+                renderHistory();
+                showToast("Đã xóa lịch sử!", "info");
+            }
+        }
+
+        function showToast(msg, type = "info") {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMessage");
+            const toastIcon = document.getElementById("toastIcon");
+
+            toastMsg.textContent = msg;
+
+            if (type === "success") {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else if (type === "warning") {
+                toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400 text-lg";
+            } else if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-xmark text-rose-400 text-lg";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-info text-indigo-400 text-lg";
+            }
+
+            toast.classList.remove("translate-y-20", "opacity-0");
+            setTimeout(() => {
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 3000);
+        }
+    </script>
+    
+</body>
+</html>
